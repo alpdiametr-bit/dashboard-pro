@@ -49,7 +49,7 @@ export function formatCompact(
   return formatMoney(n);
 }
 
-/** dd.mm.yyyy yoki Excel serial sanani Date ga */
+/** dd.mm.yyyy yoki Excel serial sanani Date ga (UTC yarim tun — TZ-safe) */
 export function parseExcelDate(raw: unknown): Date | null {
   if (raw === null || raw === undefined || raw === "") return null;
   if (raw instanceof Date) return isNaN(raw.getTime()) ? null : raw;
@@ -57,12 +57,12 @@ export function parseExcelDate(raw: unknown): Date | null {
   // dd.mm.yyyy
   const m = s.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})$/);
   if (m) {
-    let [, d, mo, y] = m;
+    const [, d, mo, y] = m;
     const yr = y.length === 2 ? 2000 + parseInt(y) : parseInt(y);
-    const date = new Date(yr, parseInt(mo) - 1, parseInt(d));
+    const date = new Date(Date.UTC(yr, parseInt(mo) - 1, parseInt(d)));
     return isNaN(date.getTime()) ? null : date;
   }
-  // Excel serial number
+  // Excel serial number (UTC epoch asosida)
   const num = Number(s);
   if (!isNaN(num) && num > 0 && num < 80000) {
     const date = new Date(Math.round((num - 25569) * 86400 * 1000));
@@ -77,8 +77,72 @@ export function formatDate(d: Date | string | null | undefined): string {
   if (!d) return "—";
   const date = typeof d === "string" ? new Date(d) : d;
   if (isNaN(date.getTime())) return "—";
+  // @db.Date qiymatlari UTC yarim tunda saqlanadi — UTC getter ishlatamiz
+  const dd = String(date.getUTCDate()).padStart(2, "0");
+  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const yyyy = date.getUTCFullYear();
+  return `${dd}.${mm}.${yyyy}`;
+}
+
+const UZ_WEEKDAYS = [
+  "Yakshanba",
+  "Dushanba",
+  "Seshanba",
+  "Chorshanba",
+  "Payshanba",
+  "Juma",
+  "Shanba",
+];
+
+const UZ_MONTH_NAMES = [
+  "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
+  "Iyul", "Avgust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr",
+];
+
+/** Hafta kuni — "Payshanba" (UTC — @db.Date uchun) */
+export function weekday(d: Date | string | null | undefined): string {
+  if (!d) return "";
+  const date = typeof d === "string" ? new Date(d) : d;
+  if (isNaN(date.getTime())) return "";
+  return UZ_WEEKDAYS[date.getUTCDay()];
+}
+
+/** "8-iyun, 2026" ko'rinishi (UTC — @db.Date uchun) */
+export function formatDateLong(d: Date | string | null | undefined): string {
+  if (!d) return "—";
+  const date = typeof d === "string" ? new Date(d) : d;
+  if (isNaN(date.getTime())) return "—";
+  return `${date.getUTCDate()}-${UZ_MONTH_NAMES[date.getUTCMonth()].toLowerCase()}, ${date.getUTCFullYear()}`;
+}
+
+/** Date -> "08.06.2026 14:30" (createdAt timestamp — mahalliy vaqt) */
+export function formatDateTime(d: Date | string | null | undefined): string {
+  if (!d) return "—";
+  const date = typeof d === "string" ? new Date(d) : d;
+  if (isNaN(date.getTime())) return "—";
   const dd = String(date.getDate()).padStart(2, "0");
   const mm = String(date.getMonth() + 1).padStart(2, "0");
   const yyyy = date.getFullYear();
-  return `${dd}.${mm}.${yyyy}`;
+  const hh = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${dd}.${mm}.${yyyy} ${hh}:${min}`;
+}
+
+/** Nisbiy vaqt — "5 daqiqa oldin", "2 soat oldin", "kecha" */
+export function timeAgo(d: Date | string | null | undefined): string {
+  if (!d) return "";
+  const date = typeof d === "string" ? new Date(d) : d;
+  if (isNaN(date.getTime())) return "";
+  const sec = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (sec < 60) return "hozir";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} daqiqa oldin`;
+  const hrs = Math.floor(min / 60);
+  if (hrs < 24) return `${hrs} soat oldin`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return "kecha";
+  if (days < 30) return `${days} kun oldin`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} oy oldin`;
+  return `${Math.floor(months / 12)} yil oldin`;
 }

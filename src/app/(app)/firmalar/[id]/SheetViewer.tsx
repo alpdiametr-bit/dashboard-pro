@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardBody } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
-import { ArrowLeft2, ArrowRight2 } from "iconsax-reactjs";
+import { Pager } from "@/components/ui/Pager";
 
 type SheetMeta = {
   id: number;
@@ -38,8 +38,6 @@ export function SheetViewer({
       })
       .finally(() => setLoading(false));
   }, [activeId, page, reportId]);
-
-  const totalPages = Math.max(1, Math.ceil(total / SIZE));
 
   function isNumeric(s: string) {
     return /^-?[\d\s.,]+$/.test(s.trim()) && /\d/.test(s);
@@ -109,29 +107,14 @@ export function SheetViewer({
             </table>
           </div>
 
-          <div className="flex items-center justify-between px-4 py-2 border-t border-[var(--border)] text-[13px] text-[var(--text-muted)]">
-            <span className="tnum">
-              {total.toLocaleString("ru-RU")} qator
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="grid place-items-center h-8 w-8 rounded-[6px] border border-[var(--border)] cursor-pointer disabled:opacity-40 hover:bg-[var(--surface-2)]"
-              >
-                <ArrowLeft2 size={16} />
-              </button>
-              <span className="px-3 tnum">
-                {page} / {totalPages}
-              </span>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-                className="grid place-items-center h-8 w-8 rounded-[6px] border border-[var(--border)] cursor-pointer disabled:opacity-40 hover:bg-[var(--surface-2)]"
-              >
-                <ArrowRight2 size={16} />
-              </button>
-            </div>
+          <div className="border-t border-[var(--border)] px-4">
+            <Pager
+              page={page}
+              total={total}
+              pageSize={SIZE}
+              onChange={setPage}
+              label="qator"
+            />
           </div>
         </CardBody>
       </Card>

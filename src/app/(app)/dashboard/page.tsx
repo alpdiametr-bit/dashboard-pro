@@ -1,11 +1,16 @@
 import Link from "next/link";
-import { dashboardStats, balanceValue } from "@/lib/queries";
+import { prisma } from "@/lib/prisma";
+import { dashboardStats, companyAssetsSeries, balanceValue } from "@/lib/queries";
 import { formatMoney, formatDate } from "@/lib/format";
+import { getLang } from "@/lib/lang";
+import { translate } from "@/lib/i18n";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { CompanyBar, StructureDonut } from "@/components/charts/Charts";
+import { StructureDonut } from "@/components/charts/Charts";
+import { CompanyAssetsChart } from "./CompanyAssetsChart";
+import { DashboardFilters } from "./DashboardFilters";
 import {
   Building,
   DocumentText,
@@ -15,52 +20,112 @@ import {
   ReceiptText,
   DocumentUpload,
   ArrowRight2,
+  Chart2,
 } from "iconsax-reactjs";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
-  const stats = await dashboardStats();
+function rangeFromPeriod(period: string): { from?: Date; to?: Date } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  switch (period) {
+    case "today": {
+      const from = new Date(y, m, now.getDate());
+      return { from, to: now };
+    }
+    case "7d":
+      return { from: new Date(now.getTime() - 7 * 864e5), to: now };
+    case "30d":
+      return { from: new Date(now.getTime() - 30 * 864e5), to: now };
+    case "month":
+      return { from: new Date(y, m, 1), to: now };
+    case "year":
+      return { from: new Date(y, 0, 1), to: now };
+    default:
+      return {};
+  }
+}
 
-  const companyBarData = stats.latestReports
-    .map((r) => ({
-      name: r.company.name.replace(/MIKROMOLIYA TASHKILOTI|MCHJ|"/gi, "").trim().slice(0, 14),
-      value: balanceValue(r.balanceLines, "120"),
-    }))
-    .filter((d) => d.value > 0)
-    .slice(0, 8);
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string; company?: string }>;
+}) {
+  const sp = await searchParams;
+  const period = sp.period || "all";
+  const companyId = Number(sp.company) || undefined;
+  const { from, to } = rangeFromPeriod(period);
+  const lang = await getLang();
+  const t = (k: string) => translate(lang, k);
+
+  const [stats, companies] = await Promise.all([
+    dashboardStats({ companyId, from, to }),
+    prisma.company.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
+
+  const assetsSeries = await companyAssetsSeries({ companyId, from, to });
 
   const structureData = [
     { name: "Kapital", value: stats.totalCapital },
     { name: "Majburiyatlar", value: stats.totalLiabilities },
   ];
 
-  const hasData = stats.reportCount > 0;
+  const hasData = stats.latestReports.length > 0;
 
   return (
     <div className="space-y-6">
+      {/* Sahifa sarlavhasi + filtrlar */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="grid h-11 w-11 place-items-center rounded-[14px] bg-gradient-to-br from-[var(--trust-blue-bright,#2f53c4)] to-[var(--trust-blue)] text-white shadow-[var(--shadow-blue)] ring-1 ring-white/15">
+            <Chart2 size={22} variant="Bold" />
+          </div>
+          <div>
+            <h1 className="text-[22px] font-bold tracking-tight text-[var(--text)]">
+              Boshqaruv paneli
+            </h1>
+            <p className="text-[13px] text-[var(--text-muted)]">
+              Firmalar bo&apos;yicha moliyaviy ko&apos;rsatkichlar
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <DashboardFilters companies={companies} />
+          <Link href="/yuklash">
+            <Button variant="gold" size="sm" title="Hisobot yuklash" aria-label="Hisobot yuklash">
+              <DocumentUpload size={18} />
+              <span className="hidden sm:inline">Yuklash</span>
+            </Button>
+          </Link>
+        </div>
+      </div>
+
       {/* KPI qatori */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard
-          label="Firmalar"
-          value={String(stats.companyCount)}
-          hint="Ro'yxatdan o'tgan"
+          label="Faol firmalar"
+          value={String(stats.activeCompanies)}
+          hint={`${stats.companyCount} jami`}
           tone="info"
-          icon={<Building size={22} />}
+          icon={<Building size={22} variant="Bold" />}
         />
         <KpiCard
           label="Jami aktivlar"
           value={formatMoney(stats.totalAssets)}
           hint="ming so'm"
           tone="info"
-          icon={<Wallet3 size={22} />}
+          icon={<Wallet3 size={22} variant="Bold" />}
         />
         <KpiCard
           label="Jami kapital"
           value={formatMoney(stats.totalCapital)}
           hint="ming so'm"
           tone="profit"
-          icon={<Coin1 size={22} />}
+          icon={<Coin1 size={22} variant="Bold" />}
         />
         <KpiCard
           label="Sof foyda"
@@ -68,41 +133,32 @@ export default async function DashboardPage() {
           hint="joriy yil"
           tone={stats.totalProfit >= 0 ? "profit" : "loss"}
           trend={stats.totalProfit >= 0 ? "up" : "down"}
-          icon={<StatusUp size={22} />}
+          icon={<StatusUp size={22} variant="Bold" />}
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard
           label="Jami majburiyatlar"
           value={formatMoney(stats.totalLiabilities)}
           hint="ming so'm"
-          icon={<ReceiptText size={22} />}
+          tone="warning"
+          icon={<ReceiptText size={22} variant="Bold" />}
         />
         <KpiCard
           label="Yuklangan hisobotlar"
           value={String(stats.reportCount)}
-          hint="jami"
-          icon={<DocumentText size={22} />}
+          hint="jami fayllar"
+          tone="info"
+          icon={<DocumentText size={22} variant="Bold" />}
         />
         <KpiCard
           label="Tasdiq kutilmoqda"
           value={String(stats.pendingCount)}
           hint="hisobot"
-          tone={stats.pendingCount > 0 ? "warning" : "info"}
-          icon={<DocumentText size={22} />}
+          tone={stats.pendingCount > 0 ? "warning" : "profit"}
+          icon={<DocumentText size={22} variant="Bold" />}
         />
-        <Card className="p-5 flex flex-col justify-between">
-          <p className="text-[13px] font-medium text-[var(--text-muted)]">
-            Yangi hisobot
-          </p>
-          <Link href="/yuklash" className="mt-3">
-            <Button variant="gold" className="w-full">
-              <DocumentUpload size={18} />
-              Hisobot yuklash
-            </Button>
-          </Link>
-        </Card>
       </div>
 
       {!hasData && (
@@ -127,18 +183,18 @@ export default async function DashboardPage() {
 
       {hasData && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2">
+          <Card className="lg:col-span-2 shadow-[var(--shadow-md)]">
             <CardHeader>
-              <CardTitle>Firmalar bo&apos;yicha aktivlar</CardTitle>
-              <Badge tone="info">so&apos;nggi hisobotlar</Badge>
+              <CardTitle>{t("dash.assetsTitle")}</CardTitle>
+              <Badge tone="info">{t("dash.assetsBadge")}</Badge>
             </CardHeader>
             <CardBody>
-              <CompanyBar data={companyBarData} />
+              <CompanyAssetsChart series={assetsSeries} />
             </CardBody>
           </Card>
-          <Card>
+          <Card className="shadow-[var(--shadow-md)]">
             <CardHeader>
-              <CardTitle>Kapital tuzilishi</CardTitle>
+              <CardTitle>{t("dash.capitalTitle")}</CardTitle>
             </CardHeader>
             <CardBody>
               <StructureDonut data={structureData} />

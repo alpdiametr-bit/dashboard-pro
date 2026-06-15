@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# test/sample report data (large .xls binaries — regeneratable)
+/info/test-reports/
+
+# uploaded files (runtime)
+/public/uploads/

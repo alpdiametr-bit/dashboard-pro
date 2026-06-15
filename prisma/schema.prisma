@@ -26,21 +26,95 @@ model Admin {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  reports Report[]
-  notes   Note[]
+  reports   Report[]
+  notes     Note[]
+  auditLogs AuditLog[]
+  documents CompanyDocument[]
+}
+
+// ───────────────────── Audit jurnali (LOG) ─────────────────────
+// MUHIM: bu jadval faqat QO'SHIB boriladi (append-only). Hech qachon
+// o'chirilmaydi va o'zgartirilmaydi. Admin o'chirilsa ham log qoladi
+// (adminId -> SetNull, lekin login/ism matn sifatida saqlanadi).
+
+enum AuditAction {
+  LOGIN_SUCCESS // muvaffaqiyatli kirish
+  LOGIN_FAILED // login yoki parol noto'g'ri
+  LOGOUT // tizimdan chiqish
+  UPLOAD // Excel hisobot yuklash
+  EXPORT // Excel/ma'lumot eksport qilish
+  CONFIRM // hisobotni tasdiqlash
+  DELETE // hisobotni o'chirish
+}
+
+model AuditLog {
+  id         Int         @id @default(autoincrement())
+  action     AuditAction
+  success    Boolean     @default(true)
+
+  // Kim (admin o'chirilsa ham matn qoladi)
+  adminId    Int?
+  admin      Admin?      @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  login      String? // urinishdagi login (xato kirishda ham yoziladi)
+  adminName  String?
+
+  // Qaysi API / so'rov
+  method     String? // GET | POST | DELETE ...
+  path       String? // /api/auth/login ...
+  ip         String?
+  userAgent  String?     @db.Text
+
+  // Nimaga taalluqli (report o'chirilsa ham log qoladi — FK yo'q)
+  reportId   Int?
+  companyName String?
+
+  message    String?     @db.Text // qisqa izoh ("Login yoki parol noto'g'ri" ...)
+  meta       Json? // qo'shimcha ma'lumot (sheets, loans, type ...)
+  createdAt  DateTime    @default(now())
+
+  @@index([action])
+  @@index([adminId])
+  @@index([createdAt])
 }
 
 // ──────────────────────── Firmalar ───────────────────────
 
 model Company {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  region    String?
-  inn       String? // STIR
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  region      String?
+  inn         String? // STIR
+  description String?  @db.Text // firma haqida tavsif
+  imageUrl    String? // logo/rasm yo'li
+  isPinned    Boolean  @default(false) // tepaga qadab qo'yilgan
+  pinnedAt    DateTime? // qadab qo'yilgan vaqt (tartiblash uchun)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  reports Report[]
+  reports   Report[]
+  documents CompanyDocument[]
+}
+
+// ───────── Firma hujjatlari (qo'shimcha fayllar: rasm/excel/csv/pdf...) ─────────
+
+model CompanyDocument {
+  id           Int      @id @default(autoincrement())
+  companyId    Int
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  title        String // hujjat nomi (fayl nomidan olinadi, tahrirlanadi)
+  description  String?  @db.Text // izoh
+  fileName     String // asl fayl nomi
+  fileUrl      String // public/uploads/documents/... yo'li
+  kind         String   @default("other") // image | excel | csv | pdf | word | other
+  mimeType     String?
+  fileSize     Int?
+  isPinned     Boolean  @default(false) // tepaga qadab qo'yilgan
+  pinnedAt     DateTime?
+  uploadedById Int?
+  uploadedBy   Admin?   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+
+  @@index([companyId])
 }
 
 // ─────────────────── Hisobot (yuklash) ───────────────────
@@ -60,6 +134,8 @@ model Report {
   reportDay      Int?
   status         ReportStatus @default(PENDING)
   isConsolidated Boolean      @default(false) // "umumiy" deb belgilangan
+  isPinned       Boolean      @default(false) // tepaga qadab qo'yilgan
+  pinnedAt       DateTime? // qadab qo'yilgan vaqt
   fileName       String
   fileSize       Int?
   uploadedById   Int?

@@ -4,16 +4,19 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Label } from "@/components/ui/Input";
+import { Label, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";
+import { DatePicker } from "@/components/ui/DatePicker";
 import {
   DocumentUpload,
   DocumentText,
-  Calendar,
+  Building,
   TickCircle,
   CloseCircle,
   InfoCircle,
+  Trash,
+  Warning2,
 } from "iconsax-reactjs";
 
 type Summary = {
@@ -32,20 +35,41 @@ type Summary = {
   profit: number;
 };
 
+type CompanyOption = { id: number; name: string };
+
+type ExistingReport = {
+  id: number;
+  fileName: string;
+  fileSize: number | null;
+  status: string;
+  createdAt: string;
+  reportDate: string;
+  company: string;
+};
+
 function fmt(n: number) {
   return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n);
 }
 
-function yesterdayISO() {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
-}
-
-export function UploadForm() {
+export function UploadForm({
+  companies = [],
+  defaultCompanyId,
+  lockCompany = false,
+  embedded = false,
+  onDone,
+}: {
+  companies?: CompanyOption[];
+  defaultCompanyId?: number;
+  lockCompany?: boolean;
+  embedded?: boolean;
+  onDone?: (companyId: number) => void;
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [companyId, setCompanyId] = useState<string>(
+    defaultCompanyId ? String(defaultCompanyId) : "",
+  );
   const [reportDate, setReportDate] = useState("");
   const [isConsolidated, setIsConsolidated] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -55,6 +79,11 @@ export function UploadForm() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [reportId, setReportId] = useState<number | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [conflict, setConflict] = useState<ExistingReport | null>(null);
+
+  const lockedCompany = lockCompany
+    ? companies.find((c) => String(c.id) === companyId)
+    : null;
 
   function pick(f: File | null) {
     if (!f) return;
@@ -66,8 +95,7 @@ export function UploadForm() {
     setFile(f);
   }
 
-  async function onUpload(e: React.FormEvent) {
-    e.preventDefault();
+  async function doUpload(force: boolean) {
     if (!file) {
       setError("Fayl tanlang");
       return;
@@ -77,15 +105,24 @@ export function UploadForm() {
     try {
       const fd = new FormData();
       fd.append("file", file);
+      if (companyId) fd.append("companyId", companyId);
       if (reportDate) fd.append("reportDate", reportDate);
       fd.append("isConsolidated", String(isConsolidated));
+      if (force) fd.append("force", "true");
 
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       const data = await res.json();
+
+      // Bu sana uchun allaqachon hisobot bor — almashtirishni so'raymiz
+      if (res.status === 409 && data.conflict) {
+        setConflict(data.existing as ExistingReport);
+        return;
+      }
       if (!res.ok) {
         setError(data.error ?? "Yuklashda xatolik");
         return;
       }
+      setConflict(null);
       setSummary(data.summary);
       setReportId(data.reportId);
     } catch {
@@ -95,17 +132,33 @@ export function UploadForm() {
     }
   }
 
+  function onUpload(e: React.FormEvent) {
+    e.preventDefault();
+    void doUpload(false);
+  }
+
+  function onReplaceConfirm() {
+    setConflict(null);
+    void doUpload(true);
+  }
+
   async function onConfirm() {
     if (!reportId) return;
     setConfirming(true);
     const res = await fetch(`/api/reports/${reportId}/confirm`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isConsolidated }),
     });
     const data = await res.json();
     setConfirming(false);
     if (res.ok) {
-      router.push(`/firmalar/${data.companyId}`);
-      router.refresh();
+      if (onDone) {
+        onDone(data.companyId);
+      } else {
+        router.push(`/firmalar/${data.companyId}`);
+        router.refresh();
+      }
     } else {
       setError(data.error ?? "Tasdiqlashda xatolik");
       setSummary(null);
@@ -122,122 +175,248 @@ export function UploadForm() {
     if (inputRef.current) inputRef.current.value = "";
   }
 
+  const Wrapper: React.ElementType = embedded ? "div" : Card;
+  const wrapperClass = embedded ? "space-y-5" : "p-5 space-y-5";
+
   return (
     <>
       <form onSubmit={onUpload}>
-        <Card className="p-5 space-y-5">
-          {/* Drag & drop */}
-          <div>
-            <Label>Excel fayl (.xls / .xlsx)</Label>
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOver(false);
-                pick(e.dataTransfer.files?.[0] ?? null);
-              }}
-              onClick={() => inputRef.current?.click()}
-              className={`cursor-pointer rounded-[12px] border-2 border-dashed px-6 py-10 text-center transition-colors ${
-                dragOver
-                  ? "border-[var(--trust-blue)] bg-[var(--trust-blue)]/5"
-                  : "border-[var(--border)] hover:border-[var(--trust-blue)]/50"
-              }`}
-            >
-              <input
-                ref={inputRef}
-                type="file"
-                accept=".xls,.xlsx"
-                className="hidden"
-                onChange={(e) => pick(e.target.files?.[0] ?? null)}
-              />
-              <div className="mx-auto grid place-items-center h-12 w-12 rounded-full bg-[var(--surface-2)] text-[var(--trust-blue)]">
-                {file ? <DocumentText size={24} /> : <DocumentUpload size={24} />}
-              </div>
-              {file ? (
-                <p className="mt-3 text-sm font-medium text-[var(--text)]">
-                  {file.name}{" "}
-                  <span className="text-[var(--text-muted)]">
-                    ({(file.size / 1024 / 1024).toFixed(1)} MB)
-                  </span>
-                </p>
-              ) : (
-                <>
-                  <p className="mt-3 text-sm font-medium text-[var(--text)]">
-                    Faylni shu yerga tashlang yoki bosing
-                  </p>
-                  <p className="text-[12px] text-[var(--text-muted)]">
-                    MFO hisobot paketi (.xls)
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Sana */}
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <Label>Hisobot sanasi</Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Calendar
-                    size={18}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
-                  />
-                  <input
-                    type="date"
-                    value={reportDate}
-                    onChange={(e) => setReportDate(e.target.value)}
-                    className="h-10 w-full pl-10 pr-3 rounded-[8px] border border-[var(--border)] bg-[var(--surface)] text-sm text-[var(--text)] focus:outline-none focus:ring-3 focus:ring-[var(--trust-blue)]/30"
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="md"
-                  onClick={() => setReportDate(yesterdayISO())}
+        <Wrapper className={wrapperClass}>
+          <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr] lg:items-stretch">
+            {/* CHAP: Drag & drop (asosiy, prominent) */}
+            <div className="flex flex-col">
+              <Label>Excel fayl (.xls / .xlsx)</Label>
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(false);
+                  pick(e.dataTransfer.files?.[0] ?? null);
+                }}
+                onClick={() => inputRef.current?.click()}
+                className={`group flex-1 cursor-pointer rounded-[14px] border-2 border-dashed px-6 py-8 flex flex-col items-center justify-center text-center transition-colors min-h-[220px] ${
+                  dragOver
+                    ? "border-[var(--trust-blue)] bg-[var(--trust-blue)]/5"
+                    : file
+                      ? "border-[var(--profit)]/40 bg-[var(--profit)]/[0.04]"
+                      : "border-[var(--border)] hover:border-[var(--trust-blue)]/50 hover:bg-[var(--surface-2)]/40"
+                }`}
+              >
+                <input
+                  ref={inputRef}
+                  type="file"
+                  accept=".xls,.xlsx"
+                  className="hidden"
+                  onChange={(e) => pick(e.target.files?.[0] ?? null)}
+                />
+                <div
+                  className={`mx-auto grid place-items-center h-14 w-14 rounded-[16px] transition-colors ${
+                    file
+                      ? "bg-[var(--profit)]/12 text-[var(--profit)]"
+                      : "bg-[var(--surface-2)] text-[var(--trust-blue)] group-hover:bg-[var(--trust-blue)]/10"
+                  }`}
                 >
-                  Kechagi
-                </Button>
+                  {file ? (
+                    <DocumentText size={26} variant="Bold" />
+                  ) : (
+                    <DocumentUpload size={26} />
+                  )}
+                </div>
+                {file ? (
+                  <>
+                    <p className="mt-3 text-sm font-semibold text-[var(--text)] break-all px-2">
+                      {file.name}
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-[var(--text-muted)]">
+                      {(file.size / 1024 / 1024).toFixed(1)} MB ·{" "}
+                      <span className="text-[var(--trust-blue)]">
+                        almashtirish uchun bosing
+                      </span>
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-3 text-sm font-medium text-[var(--text)]">
+                      Faylni shu yerga tashlang yoki bosing
+                    </p>
+                    <p className="text-[12px] text-[var(--text-muted)]">
+                      MFO hisobot paketi (.xls / .xlsx)
+                    </p>
+                  </>
+                )}
               </div>
-              <p className="mt-1 text-[12px] text-[var(--text-muted)]">
-                Bo&apos;sh qoldirsangiz, fayldagi sana ishlatiladi
-              </p>
             </div>
 
-            <div>
-              <Label>Belgi</Label>
-              <label className="flex items-center gap-2 h-10 px-3 rounded-[8px] border border-[var(--border)] bg-[var(--surface)] cursor-pointer">
+            {/* O'NG: Sozlamalar (ixcham) */}
+            <div className="flex flex-col gap-4">
+              {/* Firma (filial) */}
+              <div>
+                <Label>Firma (filial)</Label>
+                {lockCompany ? (
+                  <div className="flex items-center gap-2.5 h-10 px-3.5 rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)]/60 text-sm text-[var(--text)]">
+                    <Building size={18} className="text-[var(--trust-blue)]" />
+                    <span className="font-medium truncate">
+                      {lockedCompany?.name ?? "Tanlangan firma"}
+                    </span>
+                    <Badge tone="info" className="ml-auto">
+                      Tanlangan
+                    </Badge>
+                  </div>
+                ) : (
+                  <Select
+                    value={companyId}
+                    onChange={(e) => setCompanyId(e.target.value)}
+                    className="w-full"
+                  >
+                    <option value="">Avtomatik (fayldan aniqlanadi)</option>
+                    {companies.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </div>
+
+              {/* Sana */}
+              <div>
+                <Label>Hisobot sanasi</Label>
+                <DatePicker
+                  value={reportDate}
+                  onChange={setReportDate}
+                  placeholder="Sana tanlang"
+                />
+              </div>
+
+              {/* Belgi */}
+              <label className="flex items-start gap-2.5 px-3 py-2.5 rounded-[10px] border border-[var(--border)] bg-[var(--surface)] cursor-pointer hover:bg-[var(--surface-2)]/50 transition-colors">
                 <input
                   type="checkbox"
                   checked={isConsolidated}
                   onChange={(e) => setIsConsolidated(e.target.checked)}
-                  className="accent-[var(--trust-blue)] w-4 h-4"
+                  className="accent-[var(--trust-blue)] w-4 h-4 mt-0.5 shrink-0"
                 />
-                <span className="text-sm text-[var(--text)]">
-                  Umumiy (konsolidatsiya)
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-[var(--text)]">
+                    Umumiy (konsolidatsiya)
+                  </span>
+                  <span className="block text-[11px] text-[var(--text-muted)] leading-snug">
+                    Barcha filiallar birlashtirilgan yagona hisobot. Belgilanmasa
+                    — alohida filial (filial) hisoboti deb saqlanadi.
+                  </span>
                 </span>
               </label>
+
+              {error && (
+                <div className="flex items-center gap-2 rounded-[10px] bg-[var(--loss)]/10 text-[var(--loss)] px-3 py-2 text-[13px]">
+                  <InfoCircle size={16} /> {error}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                variant="gold"
+                size="lg"
+                className="w-full mt-auto"
+                disabled={loading || !file}
+              >
+                {loading ? "Tahlil qilinmoqda..." : "Tahlil qilish"}
+                {!loading && <DocumentUpload size={18} />}
+              </Button>
             </div>
           </div>
-
-          {error && (
-            <div className="flex items-center gap-2 rounded-[8px] bg-[var(--loss)]/10 text-[var(--loss)] px-3 py-2 text-[13px]">
-              <InfoCircle size={16} /> {error}
-            </div>
-          )}
-
-          <div className="flex justify-end">
-            <Button type="submit" variant="gold" size="lg" disabled={loading || !file}>
-              {loading ? "Tahlil qilinmoqda..." : "Tahlil qilish"}
-              {!loading && <DocumentUpload size={18} />}
-            </Button>
-          </div>
-        </Card>
+        </Wrapper>
       </form>
+
+      {/* Almashtirishni tasdiqlash modali (bu sana uchun hisobot bor) */}
+      <Modal
+        open={!!conflict}
+        onClose={() => setConflict(null)}
+        title="Eski hisobotni almashtirish"
+        width="max-w-lg"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setConflict(null)}
+              disabled={loading}
+            >
+              <CloseCircle size={18} /> Bekor qilish
+            </Button>
+            <Button variant="danger" onClick={onReplaceConfirm} disabled={loading}>
+              <Trash size={18} />
+              {loading ? "Almashtirilmoqda..." : "O'chirib, almashtirish"}
+            </Button>
+          </>
+        }
+      >
+        {conflict && (
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 rounded-[10px] bg-[var(--warning)]/10 border border-[var(--warning)]/25 p-3">
+              <Warning2
+                size={20}
+                variant="Bold"
+                className="text-[var(--warning)] shrink-0 mt-0.5"
+              />
+              <p className="text-[13px] text-[var(--text)] leading-relaxed">
+                <span className="font-semibold">{conflict.company}</span> uchun{" "}
+                <span className="font-semibold tnum">
+                  {new Date(conflict.reportDate).toLocaleDateString("ru-RU")}
+                </span>{" "}
+                sanasida allaqachon hisobot mavjud. Davom etsangiz,{" "}
+                <span className="font-semibold">eski hisobot butunlay o&apos;chiriladi</span>{" "}
+                va yangisi bilan almashtiriladi. Bu amal audit jurnaliga yoziladi.
+              </p>
+            </div>
+
+            <div className="rounded-[10px] border border-[var(--border)] divide-y divide-[var(--border)]">
+              <div className="flex items-center gap-2.5 p-3">
+                <span className="grid place-items-center h-8 w-8 rounded-[8px] bg-[var(--loss)]/10 text-[var(--loss)] shrink-0">
+                  <DocumentText size={16} variant="Bold" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-wide text-[var(--text-muted)]">
+                    O&apos;chiriladi (eski)
+                  </p>
+                  <p className="text-[13px] font-medium text-[var(--text)] truncate" title={conflict.fileName}>
+                    {conflict.fileName}
+                  </p>
+                  <p className="text-[11px] text-[var(--text-muted)]">
+                    {conflict.status === "CONFIRMED" ? "Tasdiqlangan" : "Kutilmoqda"}
+                    {conflict.fileSize
+                      ? ` · ${(conflict.fileSize / 1024 / 1024).toFixed(1)} MB`
+                      : ""}
+                    {" · "}
+                    {new Date(conflict.createdAt).toLocaleDateString("ru-RU")}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 p-3">
+                <span className="grid place-items-center h-8 w-8 rounded-[8px] bg-[var(--profit)]/10 text-[var(--profit)] shrink-0">
+                  <DocumentUpload size={16} variant="Bold" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-wide text-[var(--text-muted)]">
+                    Yangi (yuklanadi)
+                  </p>
+                  <p className="text-[13px] font-medium text-[var(--text)] truncate" title={file?.name}>
+                    {file?.name}
+                  </p>
+                  {file && (
+                    <p className="text-[11px] text-[var(--text-muted)]">
+                      {(file.size / 1024 / 1024).toFixed(1)} MB
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Tasdiqlash modali */}
       <Modal
@@ -270,6 +449,51 @@ export function UploadForm() {
                 </p>
               </div>
               {isConsolidated && <Badge tone="gold">Umumiy</Badge>}
+            </div>
+
+            {/* Konsolidatsiya turi — saqlashdan oldin so'raladi */}
+            <div className="rounded-[12px] border border-[var(--border)] bg-[var(--surface-2)]/40 p-3.5">
+              <div className="flex items-start gap-2.5">
+                <span className="grid place-items-center h-8 w-8 rounded-[9px] bg-[var(--trust-blue)]/10 text-[var(--trust-blue)] shrink-0">
+                  <InfoCircle size={17} variant="Bold" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-[var(--text)]">
+                    Hisobot turi
+                  </p>
+                  <p className="text-[12px] text-[var(--text-muted)] leading-snug">
+                    <b>Umumiy (konsolidatsiya)</b> — barcha filiallar
+                    birlashtirilgan yagona hisobot. <b>Alohida filial</b> — bitta
+                    filialning hisoboti.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsConsolidated(false)}
+                  className={`flex items-center justify-center gap-2 h-10 rounded-[10px] border text-[13px] font-medium transition-all ${
+                    !isConsolidated
+                      ? "border-[var(--trust-blue)] bg-[var(--trust-blue)]/10 text-[var(--trust-blue)] ring-2 ring-[var(--ring)]"
+                      : "border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-2)]"
+                  }`}
+                >
+                  {!isConsolidated && <TickCircle size={16} variant="Bold" />}
+                  Alohida filial
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsConsolidated(true)}
+                  className={`flex items-center justify-center gap-2 h-10 rounded-[10px] border text-[13px] font-medium transition-all ${
+                    isConsolidated
+                      ? "border-[var(--gold)] bg-[var(--gold)]/10 text-[var(--gold)] ring-2 ring-[var(--gold)]/20"
+                      : "border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-2)]"
+                  }`}
+                >
+                  {isConsolidated && <TickCircle size={16} variant="Bold" />}
+                  Umumiy (konsolidatsiya)
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

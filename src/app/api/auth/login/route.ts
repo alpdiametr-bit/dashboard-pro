@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword, createSession } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 
 const schema = z.object({
   login: z.string().min(1, "Login kiriting"),
@@ -28,6 +29,13 @@ export async function POST(req: NextRequest) {
   const admin = await prisma.admin.findUnique({ where: { login } });
 
   if (!admin || !admin.isActive) {
+    await audit({
+      action: "LOGIN_FAILED",
+      success: false,
+      login,
+      message: admin ? "Hisob faol emas" : "Login topilmadi",
+      req,
+    });
     return NextResponse.json(
       { error: "Login yoki parol noto'g'ri" },
       { status: 401 },
@@ -36,6 +44,15 @@ export async function POST(req: NextRequest) {
 
   const ok = await verifyPassword(password, admin.passwordHash);
   if (!ok) {
+    await audit({
+      action: "LOGIN_FAILED",
+      success: false,
+      adminId: admin.id,
+      login,
+      adminName: admin.name,
+      message: "Parol noto'g'ri",
+      req,
+    });
     return NextResponse.json(
       { error: "Login yoki parol noto'g'ri" },
       { status: 401 },
@@ -47,6 +64,15 @@ export async function POST(req: NextRequest) {
     login: admin.login,
     name: admin.name,
     role: admin.role,
+  });
+
+  await audit({
+    action: "LOGIN_SUCCESS",
+    adminId: admin.id,
+    login: admin.login,
+    adminName: admin.name,
+    message: "Tizimga kirdi",
+    req,
   });
 
   return NextResponse.json({ ok: true });

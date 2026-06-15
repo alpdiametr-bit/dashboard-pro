@@ -1,10 +1,17 @@
 # ===========================================================================
-# dashboard-pro — Docker Compose (app + MySQL)
-# ESLATMA: Hozircha ISHLATILMAYDI. Docker Desktop o'rnatilgach:
+# dashboard-pro — to'liq stack (MySQL + Next.js app + Prisma Studio + Nginx)
+#
+# Ishga tushirish:
 #   docker compose up -d --build
+#
+# Kirish nuqtalari:
+#   http://dashboard-pro.uz       → sayt (nginx :80 → app:3000)
+#   http://localhost:5555         → Prisma Studio (DB ko'rish/qo'shish/o'chirish)
+#   localhost:3306                → MySQL (tashqi ulanish uchun)
 # ===========================================================================
 
 services:
+  # ───────────────────────── MySQL ─────────────────────────
   db:
     image: mysql:8.4
     container_name: dashboard-pro-db
@@ -20,12 +27,35 @@ services:
       - db_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p$$MYSQL_ROOT_PASSWORD"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
     networks:
       - dashboard-net
 
+  # ──────────── Migrator: schema push + seed (1 marta ishlab tugaydi) ────────────
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: dashboard-pro-migrator
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "mysql://${MYSQL_USER:-dashboard}:${MYSQL_PASSWORD:-dashboard}@db:3306/${MYSQL_DATABASE:-dashboard_pro}"
+      SEED_ADMIN_LOGIN: ${SEED_ADMIN_LOGIN:-admin}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin123}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Bosh administrator}
+    command: >
+      sh -c "npx prisma db push --skip-generate &&
+             npx tsx prisma/seed.ts"
+    restart: "no"
+    networks:
+      - dashboard-net
+
+  # ───────────────────────── Next.js app ─────────────────────────
   app:
     build:
       context: .
@@ -35,20 +65,58 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
     environment:
-      # Prisma MySQL ulanishi
       DATABASE_URL: "mysql://${MYSQL_USER:-dashboard}:${MYSQL_PASSWORD:-dashboard}@db:3306/${MYSQL_DATABASE:-dashboard_pro}"
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
-      # Auth/secret lar .env dan keladi
       AUTH_SECRET: ${AUTH_SECRET:-change-me-in-production}
+    volumes:
+      # Yuklangan fayllar (logo / hujjatlar) saqlanib qolsin
+      - uploads_data:/app/public/uploads
+    expose:
+      - "3000"
+    networks:
+      - dashboard-net
+
+  # ───────────────────────── Prisma Studio ─────────────────────────
+  studio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: dashboard-pro-studio
+    restart: unless-stopped
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: "mysql://${MYSQL_USER:-dashboard}:${MYSQL_PASSWORD:-dashboard}@db:3306/${MYSQL_DATABASE:-dashboard_pro}"
+    command: >
+      npx prisma studio --port 5555 --hostname 0.0.0.0 --browser none
     ports:
-      - "3000:3000"
+      - "5555:5555"
+    networks:
+      - dashboard-net
+
+  # ───────────────────────── Nginx (port 80) ─────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: dashboard-pro-nginx
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/dashboard-pro.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - dashboard-net
 
 volumes:
   db_data:
+  uploads_data:
 
 networks:
   dashboard-net:

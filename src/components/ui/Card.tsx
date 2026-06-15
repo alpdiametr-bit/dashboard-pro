@@ -8,7 +8,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "bg-[var(--surface)] border border-[var(--border)] rounded-[16px] shadow-[var(--shadow-sm)]",
+        "relative bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-lg)] shadow-[var(--shadow-sm)]",
         className,
       )}
       {...props}
@@ -39,7 +39,12 @@ export function CardTitle({
   children,
 }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
-    <h3 className={cn("text-[15px] font-semibold text-[var(--text)]", className)}>
+    <h3
+      className={cn(
+        "text-[15px] font-semibold tracking-tight text-[var(--text)]",
+        className,
+      )}
+    >
       {children}
     </h3>
   );

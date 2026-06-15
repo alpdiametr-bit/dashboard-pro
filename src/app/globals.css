@@ -1,60 +1,106 @@
 @import "tailwindcss";
 
 /*
-  dashboard-pro — Design tokens
+  dashboard-pro — Premium Design tokens
   Manba: design-system/MASTER.md (UI UX Pro Max — Banking #67)
   Navy #0F172A + Trust Blue #1E3A8A + Gold #CA8A04, shrift IBM Plex Sans.
+  Uslub: Swiss Modernism 2.0 — qatlamli soyalar, nozik gradientlar,
+  shisha (glass) yuzalar, mikro-animatsiyalar. (Premium banking grade.)
 */
 
 :root {
   /* Brand */
   --navy: #0f172a;
   --navy-deep: #0a1628;
+  --navy-soft: #172033;
   --trust-blue: #1e3a8a;
+  --trust-blue-bright: #2f53c4;
   --gold: #ca8a04;
   --gold-soft: #eab308;
+  --gold-bright: #facc15;
 
   /* Surfaces (light) */
-  --background: #f8fafc;
+  --background: #f6f8fc;
   --surface: #ffffff;
   --surface-2: #f1f5f9;
-  --border: #e2e8f0;
-  --text: #020617;
-  --text-muted: #475569;
+  --surface-3: #e9eef6;
+  --border: #e4e9f1;
+  --border-strong: #d3dbe7;
+  --text: #0b1220;
+  --text-muted: #5b6678;
+  --text-soft: #8a94a6;
 
   /* Semantik (moliyaviy) */
-  --profit: #22c55e;
-  --loss: #ef4444;
+  --profit: #16a34a;
+  --profit-bright: #22c55e;
+  --loss: #e11d48;
+  --loss-bright: #ef4444;
   --warning: #f59e0b;
   --neutral: #6b7280;
   --trust-accent: #003366;
+  --sky: #0ea5e9;
+  --violet: #7c3aed;
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
 
-  --shadow-sm: 0 1px 2px rgba(2, 6, 23, 0.06);
-  --shadow-md: 0 4px 6px rgba(2, 6, 23, 0.08);
-  --shadow-lg: 0 10px 20px rgba(2, 6, 23, 0.1);
+  /* Qatlamli, ko'k tusli soyalar (premium "floating" his) */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 10px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -2px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 18px 40px -12px rgba(15, 23, 42, 0.18), 0 6px 16px -8px rgba(15, 23, 42, 0.1);
+  --shadow-xl: 0 30px 60px -18px rgba(15, 23, 42, 0.28), 0 10px 24px -12px rgba(15, 23, 42, 0.16);
+  --shadow-gold: 0 8px 24px -6px rgba(202, 138, 4, 0.4);
+  --shadow-blue: 0 8px 24px -6px rgba(30, 58, 138, 0.34);
+
+  /* Gradientlar */
+  --grad-brand: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
+  --grad-gold: linear-gradient(135deg, #facc15 0%, #ca8a04 100%);
+  --grad-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0));
+
+  --ring: rgba(47, 83, 196, 0.35);
 }
 
 .dark {
-  --background: #020617;
-  --surface: #0f172a;
-  --surface-2: #1e293b;
-  --border: #1e293b;
-  --text: #f8fafc;
-  --text-muted: #94a3b8;
+  --background: #060b18;
+  --surface: #0e1626;
+  --surface-2: #16213a;
+  --surface-3: #1d2b46;
+  --border: #1f2c45;
+  --border-strong: #2b3a59;
+  --text: #f1f5fb;
+  --text-muted: #97a3ba;
+  --text-soft: #6b7a93;
+
   --gold: #eab308;
+  --gold-soft: #facc15;
+  --profit: #22c55e;
+  --loss: #f43f5e;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 6px 16px -4px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 20px 44px -14px rgba(0, 0, 0, 0.66);
+  --shadow-xl: 0 34px 64px -18px rgba(0, 0, 0, 0.74);
+  --shadow-gold: 0 8px 28px -6px rgba(234, 179, 8, 0.34);
+  --shadow-blue: 0 8px 28px -6px rgba(47, 83, 196, 0.4);
+
+  --grad-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0));
+  --ring: rgba(99, 138, 235, 0.4);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
+  --color-text-soft: var(--text-soft);
   --color-navy: var(--navy);
   --color-navy-deep: var(--navy-deep);
   --color-trust-blue: var(--trust-blue);
@@ -64,6 +110,8 @@
   --color-warning: var(--warning);
   --color-neutral: var(--neutral);
   --color-trust-accent: var(--trust-accent);
+  --color-sky: var(--sky);
+  --color-violet: var(--violet);
   --font-sans: var(--font-ibm-plex-sans), system-ui, sans-serif;
 }
 
@@ -83,24 +131,115 @@ body {
   color: var(--text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
+/* ───────── Ambient fon (nozik gradient mesh) ───────── */
+.app-ambient::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(60% 50% at 88% 0%, rgba(30, 58, 138, 0.07), transparent 70%),
+    radial-gradient(50% 45% at 0% 100%, rgba(202, 138, 4, 0.06), transparent 70%);
+}
+.dark .app-ambient::before {
+  background:
+    radial-gradient(60% 50% at 88% 0%, rgba(47, 83, 196, 0.16), transparent 70%),
+    radial-gradient(50% 45% at 0% 100%, rgba(234, 179, 8, 0.08), transparent 70%);
+}
+
+/* ───────── Yordamchi klasslar ───────── */
 /* Raqamlar ustunlari tekis turishi uchun */
 .tnum {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
 
+.glass {
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+}
+
+.gradient-text {
+  background: var(--grad-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Yuza ustidagi nozik yorug'lik (premium kartalar) */
+.sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--grad-sheen);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Hover lift — kartalar uchun */
+.lift {
+  transition:
+    transform 0.25s cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 0.25s cubic-bezier(0.2, 0.7, 0.2, 1),
+    border-color 0.25s ease;
+}
+.lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-strong);
+}
+
+/* Skeleton / shimmer */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--surface) 60%, transparent),
+    transparent
+  );
+  animation: dp-shimmer 1.6s infinite;
+}
+
+/* Kirib kelish animatsiyasi */
+.animate-rise {
+  animation: dp-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.animate-fade {
+  animation: dp-fade 0.45s ease both;
+}
+
+/* ───────── Scrollbar ───────── */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: color-mix(in srgb, var(--text-muted) 30%, transparent);
   border-radius: 8px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+  background: color-mix(in srgb, var(--text-muted) 55%, transparent);
+  background-clip: padding-box;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -109,5 +248,150 @@ body {
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ───────── Keyframes ───────── */
+@keyframes dp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dp-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dp-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes dp-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ───────── Splash (analitika uslubidagi yuklash ekrani) ───────── */
+@keyframes dp-splash-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@keyframes dp-bar-rise {
+  0% {
+    transform: scaleY(0.14);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(0.4);
+    opacity: 0.55;
+  }
+}
+
+@keyframes dp-track {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes dp-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dp-pop {
+  0% {
+    transform: scale(0.78);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes dp-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes dp-halo {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 0.85;
+  }
+}
+
+@keyframes dp-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dropdown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dp-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
