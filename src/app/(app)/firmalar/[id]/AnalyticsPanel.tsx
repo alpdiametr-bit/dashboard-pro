@@ -301,6 +301,12 @@ function LedgerSection({
   const rows = mode === "diff" ? ledger.topByDiff : ledger.topByTurnover;
   const maxAbs = Math.max(1, ...rows.map((r) => Math.abs(mode === "diff" ? r.diff : r.debit + r.credit)));
 
+  // Ikki tomonlama yozuv: jami debet = jami kredit (balansli). Farqi 0 ga
+  // teng bo'lsa — bu to'g'ri (buxgalteriya tengligi). Asl "raznitsa" har
+  // hisobvaraq darajasida muhim (quyidagi jadval).
+  const totalVol = ledger.totalDebit + ledger.totalCredit;
+  const balanced = totalVol > 0 && Math.abs(ledger.diff) / totalVol < 0.0001;
+
   return (
     <div className="space-y-4">
       <SectionTitle
@@ -324,10 +330,11 @@ function LedgerSection({
           icon={<ArrowUp size={20} />}
         />
         <SummaryTile
-          label="Farqi (raznitsa)"
-          value={fmtSigned(ledger.diff)}
-          tone={ledger.diff >= 0 ? "profit" : "loss"}
-          icon={<ArrowSwapHorizontal size={20} />}
+          label={balanced ? "Balans tengligi" : "Farqi (raznitsa)"}
+          value={balanced ? "D = K ✓" : fmtSigned(ledger.diff)}
+          tone={balanced ? "profit" : ledger.diff >= 0 ? "info" : "loss"}
+          icon={balanced ? <TickCircle size={20} /> : <ArrowSwapHorizontal size={20} />}
+          sub={balanced ? "ikki tomonlama yozuv to'g'ri" : undefined}
         />
       </div>
 
@@ -335,7 +342,7 @@ function LedgerSection({
         {/* Debet vs Kredit oborot dinamikasi */}
         <Card>
           <CardHeader>
-            <CardTitle>Debet va Kredit oborot dinamikasi</CardTitle>
+            <CardTitle>Oborot hajmi dinamikasi (Debet = Kredit)</CardTitle>
           </CardHeader>
           <CardBody>
             <TrendLine
@@ -343,7 +350,6 @@ function LedgerSection({
               series={[
                 { key: "turnoverDebit", label: "Debet oborot", color: "#1e3a8a", money: true },
                 { key: "turnoverCredit", label: "Kredit oborot", color: "#ca8a04", money: true },
-                { key: "turnoverNet", label: "Farqi (raznitsa)", color: "#16a34a", money: true },
               ]}
             />
           </CardBody>
@@ -365,7 +371,7 @@ function LedgerSection({
                       : "bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--text)]",
                   )}
                 >
-                  {m === "diff" ? "Raznitsa" : "Oborot"}
+                  {m === "diff" ? "Raznitsa (D−K)" : "Oborot hajmi"}
                 </button>
               ))}
             </div>
@@ -571,11 +577,13 @@ function SummaryTile({
   value,
   tone,
   icon,
+  sub,
 }: {
   label: string;
   value: string;
   tone: "info" | "profit" | "loss" | "warning";
   icon: React.ReactNode;
+  sub?: string;
 }) {
   const toneClass: Record<string, string> = {
     info: "bg-[var(--trust-blue)]/10 text-[var(--trust-blue)]",
@@ -585,12 +593,13 @@ function SummaryTile({
   };
   return (
     <div className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3.5 shadow-[var(--shadow-xs)] flex items-center gap-3">
-      <span className={cn("grid place-items-center h-10 w-10 rounded-[10px]", toneClass[tone])}>
+      <span className={cn("grid place-items-center h-10 w-10 rounded-[10px] shrink-0", toneClass[tone])}>
         {icon}
       </span>
       <div className="min-w-0">
         <p className="text-[12px] text-[var(--text-muted)]">{label}</p>
         <p className="text-[18px] font-bold tnum text-[var(--text)] leading-tight">{value}</p>
+        {sub && <p className="text-[11px] text-[var(--text-muted)] mt-0.5">{sub}</p>}
       </div>
     </div>
   );
