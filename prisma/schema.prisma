@@ -1,0 +1,236 @@
+// dashboard-pro — Prisma schema
+// Strategiya: HECH QANDAY DATA YO'QOLMAYDI.
+//   - Har bir Excel sheet xom holda `ReportSheet.data` (JSON grid) ichida saqlanadi.
+//   - Asosiy sheetlar (balans, foyda-zarar, kredit portfeli, konsolidatsiya,
+//     jalb etilgan, normativlar) qo'shimcha strukturali jadvallarga ham yoziladi
+//     (qidiruv, pagination, filter, dashboard uchun).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────── Auth ─────────────────────────
+
+model Admin {
+  id           Int      @id @default(autoincrement())
+  login        String   @unique
+  name         String?
+  passwordHash String
+  role         String   @default("admin") // admin | superadmin
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  reports Report[]
+  notes   Note[]
+}
+
+// ──────────────────────── Firmalar ───────────────────────
+
+model Company {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  region    String?
+  inn       String? // STIR
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reports Report[]
+}
+
+// ─────────────────── Hisobot (yuklash) ───────────────────
+
+enum ReportStatus {
+  PENDING // tasdiqlash kutilmoqda
+  CONFIRMED // bazaga tasdiqlangan
+}
+
+model Report {
+  id             Int          @id @default(autoincrement())
+  companyId      Int
+  company        Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  reportDate     DateTime     @db.Date // hisobot sanasi (masalan "kechagi")
+  reportYear     Int?
+  reportMonth    String?
+  reportDay      Int?
+  status         ReportStatus @default(PENDING)
+  isConsolidated Boolean      @default(false) // "umumiy" deb belgilangan
+  fileName       String
+  fileSize       Int?
+  uploadedById   Int?
+  uploadedBy     Admin?       @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime     @default(now())
+  confirmedAt    DateTime?
+
+  sheets         ReportSheet[]
+  balanceLines   BalanceLine[]
+  incomeLines    IncomeLine[]
+  ledgerAccounts LedgerAccount[]
+  loanItems      LoanItem[]
+  borrowedFunds  BorrowedFund[]
+  norms          Norm[]
+  notes          Note[]
+
+  @@unique([companyId, reportDate])
+  @@index([reportDate])
+  @@index([status])
+}
+
+// ─────────── Xom saqlash: har bir sheet (data yo'qolmasin) ───────────
+
+model ReportSheet {
+  id       Int     @id @default(autoincrement())
+  reportId Int
+  report   Report  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  name     String // sheet nomi (masalan "Кредит портфели")
+  orderIdx Int // workbookdagi tartib
+  title    String? @db.Text // ilova nomi/sarlavha (1-qatorlardan)
+  rowCount Int
+  colCount Int
+  data     Json // string[][] — to'liq grid (barcha hujayralar)
+
+  @@index([reportId])
+}
+
+// ─────────── Strukturali: Balans (4-ilova) ───────────
+
+model BalanceLine {
+  id       Int     @id @default(autoincrement())
+  reportId Int
+  report   Report  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  code     String? // kod (10, 20, ... 370)
+  label    String  @db.Text
+  value    Decimal @default(0) @db.Decimal(22, 2)
+  section  String? // AKTIV | MAJBURIYAT | KAPITAL
+  orderIdx Int
+
+  @@index([reportId])
+}
+
+// ─────────── Strukturali: Moliyaviy natijalar (5-ilova) ───────────
+
+model IncomeLine {
+  id       Int     @id @default(autoincrement())
+  reportId Int
+  report   Report  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  code     String?
+  label    String  @db.Text
+  value    Decimal @default(0) @db.Decimal(22, 2)
+  section  String? // FOIZLI_DAROMAD | FOIZLI_HARAJAT | FOIZSIZ_... | OPERATSION | FOYDA
+  orderIdx Int
+
+  @@index([reportId])
+}
+
+// ─────────── Strukturali: Konsolidatsiya / oborotka (3-ilova) ───────────
+
+model LedgerAccount {
+  id             Int     @id @default(autoincrement())
+  reportId       Int
+  report         Report  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  accountNo      String // hisobvaraq raqami
+  name           String  @db.Text
+  openDebit      Decimal @default(0) @db.Decimal(22, 2)
+  openCredit     Decimal @default(0) @db.Decimal(22, 2)
+  turnoverDebit  Decimal @default(0) @db.Decimal(22, 2)
+  turnoverCredit Decimal @default(0) @db.Decimal(22, 2)
+  closeDebit     Decimal @default(0) @db.Decimal(22, 2)
+  closeCredit    Decimal @default(0) @db.Decimal(22, 2)
+  orderIdx       Int
+
+  @@index([reportId])
+  @@index([accountNo])
+}
+
+// ─────────── Strukturali: Kredit portfeli (7-ilova) ───────────
+
+model LoanItem {
+  id              Int      @id @default(autoincrement())
+  reportId        Int
+  report          Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  rowNo           Int? // № (1-ustun)
+  account         String? // ҳ/в
+  regionCode      String? // ҳудуд коди
+  districtCode    String? // туман/шаҳар коди
+  borrowerName    String   @db.Text // қарздорнинг тўлиқ номи
+  pinfl           String? // СТИР/ЖШШИР
+  subjectType     Int? // 1-yuridik,2-YATT,3-o'zini band,4-jismoniy
+  related         String? // aloqadorlik (ha/yo'q)
+  groupNo         String?
+  amount          Decimal  @default(0) @db.Decimal(22, 2) // kredit summasi
+  balance         Decimal  @default(0) @db.Decimal(22, 2) // qoldiq
+  reserve         Decimal  @default(0) @db.Decimal(22, 2) // zaxira
+  accruedInterest Decimal  @default(0) @db.Decimal(22, 2) // hisoblangan foiz
+  rate            Decimal? @db.Decimal(8, 2) // yillik foiz stavka
+  issuedAt        DateTime? @db.Date // berilgan sana
+  dueAt           DateTime? @db.Date // qaytarish sanasi
+  loanType        Int? // 1-iste'mol,2-mikrokredit,3-mikroqarz,4-lizing
+  collateralType  Int? // 0-taminlanmagan,1-ko'chmas,2-transport,...
+  collateralValue Decimal  @default(0) @db.Decimal(22, 2)
+  overduePrincipal Decimal @default(0) @db.Decimal(22, 2) // muddati o'tgan asosiy qarz
+  overdue1_30     Decimal  @default(0) @db.Decimal(22, 2)
+  overdue31_90    Decimal  @default(0) @db.Decimal(22, 2)
+  overdue91_180   Decimal  @default(0) @db.Decimal(22, 2)
+  overdue181      Decimal  @default(0) @db.Decimal(22, 2)
+  overdueInterest Decimal  @default(0) @db.Decimal(22, 2)
+
+  @@index([reportId])
+  @@index([borrowerName(length: 191)])
+  @@index([pinfl])
+}
+
+// ─────────── Strukturali: Jalb etilgan mablag'lar (10-ilova) ───────────
+
+model BorrowedFund {
+  id          Int      @id @default(autoincrement())
+  reportId    Int
+  report      Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  rowNo       Int?
+  creditorName String  @db.Text // kreditor (bank) nomi
+  amount      Decimal  @default(0) @db.Decimal(22, 2)
+  balance     Decimal  @default(0) @db.Decimal(22, 2)
+  rate        Decimal? @db.Decimal(8, 2)
+  issuedAt    DateTime? @db.Date
+  dueAt       DateTime? @db.Date
+  raw         Json // qatordagi barcha hujayralar (yo'qolmasin)
+  orderIdx    Int
+
+  @@index([reportId])
+}
+
+// ─────────── Strukturali: Normativlar (12-ilova) ───────────
+
+model Norm {
+  id        Int     @id @default(autoincrement())
+  reportId  Int
+  report    Report  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  code      String? // 1.1, 2.1, 3.1 ...
+  indicator String  @db.Text // ko'rsatkich nomi
+  norm      String? // me'yor (min 0,10 / maks 0,25 ...)
+  actual    String? // amalda
+  orderIdx  Int
+
+  @@index([reportId])
+}
+
+// ─────────── Izohlar (har amaliyotga description) ───────────
+
+model Note {
+  id         Int      @id @default(autoincrement())
+  reportId   Int?
+  report     Report?  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  entityType String // report | loan | balance | income | ledger | sheet | company
+  entityId   String // tegishli yozuv id si (moslashuvchanlik uchun string)
+  text       String   @db.Text
+  adminId    Int?
+  admin      Admin?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+
+  @@index([reportId])
+  @@index([entityType, entityId])
+}

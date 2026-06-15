@@ -1,0 +1,43 @@
+# --- Node / build ---
+node_modules
+.next
+out
+build
+dist
+
+# --- env / secrets ---
+.env
+.env.*
+!.env.example
+
+# --- git / ci ---
+.git
+.gitignore
+.github
+
+# --- editor / os ---
+.vscode
+.idea
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- logs ---
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# --- docker ---
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# --- loyihaga oid ---
+info/_analysis
+*.md
+README*.md
+
+# --- test / coverage ---
+coverage
+.nyc_output

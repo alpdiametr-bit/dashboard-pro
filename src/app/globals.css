@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+/*
+  dashboard-pro — Design tokens
+  Manba: design-system/MASTER.md (UI UX Pro Max — Banking #67)
+  Navy #0F172A + Trust Blue #1E3A8A + Gold #CA8A04, shrift IBM Plex Sans.
+*/
+
+:root {
+  /* Brand */
+  --navy: #0f172a;
+  --navy-deep: #0a1628;
+  --trust-blue: #1e3a8a;
+  --gold: #ca8a04;
+  --gold-soft: #eab308;
+
+  /* Surfaces (light) */
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --border: #e2e8f0;
+  --text: #020617;
+  --text-muted: #475569;
+
+  /* Semantik (moliyaviy) */
+  --profit: #22c55e;
+  --loss: #ef4444;
+  --warning: #f59e0b;
+  --neutral: #6b7280;
+  --trust-accent: #003366;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --shadow-sm: 0 1px 2px rgba(2, 6, 23, 0.06);
+  --shadow-md: 0 4px 6px rgba(2, 6, 23, 0.08);
+  --shadow-lg: 0 10px 20px rgba(2, 6, 23, 0.1);
+}
+
+.dark {
+  --background: #020617;
+  --surface: #0f172a;
+  --surface-2: #1e293b;
+  --border: #1e293b;
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --gold: #eab308;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-navy: var(--navy);
+  --color-navy-deep: var(--navy-deep);
+  --color-trust-blue: var(--trust-blue);
+  --color-gold: var(--gold);
+  --color-profit: var(--profit);
+  --color-loss: var(--loss);
+  --color-warning: var(--warning);
+  --color-neutral: var(--neutral);
+  --color-trust-accent: var(--trust-accent);
+  --font-sans: var(--font-ibm-plex-sans), system-ui, sans-serif;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Raqamlar ustunlari tekis turishi uchun */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

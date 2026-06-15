@@ -1,0 +1,55 @@
+# ===========================================================================
+# dashboard-pro — Docker Compose (app + MySQL)
+# ESLATMA: Hozircha ISHLATILMAYDI. Docker Desktop o'rnatilgach:
+#   docker compose up -d --build
+# ===========================================================================
+
+services:
+  db:
+    image: mysql:8.4
+    container_name: dashboard-pro-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-dashboard_pro}
+      MYSQL_USER: ${MYSQL_USER:-dashboard}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-dashboard}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dashboard-net
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dashboard-pro-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Prisma MySQL ulanishi
+      DATABASE_URL: "mysql://${MYSQL_USER:-dashboard}:${MYSQL_PASSWORD:-dashboard}@db:3306/${MYSQL_DATABASE:-dashboard_pro}"
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Auth/secret lar .env dan keladi
+      AUTH_SECRET: ${AUTH_SECRET:-change-me-in-production}
+    ports:
+      - "3000:3000"
+    networks:
+      - dashboard-net
+
+volumes:
+  db_data:
+
+networks:
+  dashboard-net:
+    driver: bridge
