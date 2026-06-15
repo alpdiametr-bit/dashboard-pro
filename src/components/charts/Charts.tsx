@@ -417,6 +417,7 @@ type SeriesDef = {
   label: string;
   color: string;
   money?: boolean; // true = ming so'm (compact), false = % / koeff
+  dashed?: boolean; // uzuq-uzuq chiziq (ustma-ust tushganda farqlash uchun)
 };
 
 const AXIS = {
@@ -500,7 +501,8 @@ export function TrendLine({
             dataKey={s.key}
             name={s.label}
             stroke={s.color}
-            strokeWidth={2.4}
+            strokeWidth={s.dashed ? 3 : 2.4}
+            strokeDasharray={s.dashed ? "7 5" : undefined}
             dot={single ? { r: 4, fill: s.color } : { r: 2.5, fill: s.color }}
             activeDot={{ r: 5 }}
             isAnimationActive={false}

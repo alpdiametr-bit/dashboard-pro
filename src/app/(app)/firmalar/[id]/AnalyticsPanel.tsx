@@ -340,15 +340,32 @@ function LedgerSection({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Debet vs Kredit oborot dinamikasi */}
-        <Card>
+        <Card className="shadow-[var(--shadow-sm)]">
           <CardHeader>
-            <CardTitle>Oborot hajmi dinamikasi (Debet = Kredit)</CardTitle>
+            <CardTitle>
+              <span className="inline-flex items-center gap-2">
+                <span className="grid h-7 w-7 place-items-center rounded-[9px] bg-[var(--trust-blue)]/10 text-[var(--trust-blue)]">
+                  <ArrangeHorizontal size={16} variant="Bold" />
+                </span>
+                Oborot dinamikasi
+              </span>
+            </CardTitle>
+            <div className="flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--trust-blue)]/10 px-2 py-0.5 text-[11px] font-semibold text-[var(--trust-blue)] tnum">
+                <span className="h-2 w-2 rounded-full bg-[var(--trust-blue)]" />
+                D {formatCompact(ledger.totalDebit)}
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--gold)]/12 px-2 py-0.5 text-[11px] font-semibold text-[var(--gold)] tnum">
+                <span className="h-2 w-2 rounded-full bg-[var(--gold)]" />
+                K {formatCompact(ledger.totalCredit)}
+              </span>
+            </div>
           </CardHeader>
           <CardBody>
             <TrendLine
               data={series as unknown as Record<string, number | string>[]}
               series={[
-                { key: "turnoverDebit", label: "Debet oborot", color: "#1e3a8a", money: true },
+                { key: "turnoverDebit", label: "Debet oborot", color: "#1e3a8a", money: true, dashed: true },
                 { key: "turnoverCredit", label: "Kredit oborot", color: "#ca8a04", money: true },
               ]}
             />
@@ -356,22 +373,29 @@ function LedgerSection({
         </Card>
 
         {/* Eng muhim hisobvaraqlar (oborot yoki raznitsa bo'yicha) */}
-        <Card>
+        <Card className="shadow-[var(--shadow-sm)]">
           <CardHeader>
-            <CardTitle>Eng muhim hisobvaraqlar</CardTitle>
-            <div className="flex items-center gap-1.5">
+            <CardTitle>
+              <span className="inline-flex items-center gap-2">
+                <span className="grid h-7 w-7 place-items-center rounded-[9px] bg-[var(--gold)]/12 text-[var(--gold)]">
+                  <Chart size={16} variant="Bold" />
+                </span>
+                Eng muhim hisobvaraqlar
+              </span>
+            </CardTitle>
+            <div className="inline-flex items-center gap-0.5 rounded-[10px] bg-[var(--surface-2)] p-0.5">
               {(["diff", "turnover"] as const).map((m) => (
                 <button
                   key={m}
                   onClick={() => setMode(m)}
                   className={cn(
-                    "h-8 px-2.5 rounded-[8px] text-[12px] font-medium cursor-pointer transition-colors",
+                    "h-7 px-2.5 rounded-[8px] text-[12px] font-medium cursor-pointer transition-all duration-200",
                     mode === m
-                      ? "bg-[var(--trust-blue)] text-white"
-                      : "bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--text)]",
+                      ? "bg-[var(--surface)] text-[var(--trust-blue)] shadow-[var(--shadow-xs)]"
+                      : "text-[var(--text-muted)] hover:text-[var(--text)]",
                   )}
                 >
-                  {m === "diff" ? "Raznitsa (D−K)" : "Oborot hajmi"}
+                  {m === "diff" ? "Raznitsa" : "Oborot"}
                 </button>
               ))}
             </div>
@@ -383,8 +407,8 @@ function LedgerSection({
               </p>
             ) : (
               <div className="divide-y divide-[var(--border)]">
-                {rows.map((r) => (
-                  <LedgerRow key={r.accountNo} row={r} mode={mode} maxAbs={maxAbs} />
+                {rows.map((r, i) => (
+                  <LedgerRow key={r.accountNo} row={r} rank={i + 1} mode={mode} maxAbs={maxAbs} />
                 ))}
               </div>
             )}
@@ -397,29 +421,35 @@ function LedgerSection({
 
 function LedgerRow({
   row,
+  rank,
   mode,
   maxAbs,
 }: {
   row: LedgerTurnoverRow;
+  rank: number;
   mode: "turnover" | "diff";
   maxAbs: number;
 }) {
   const metric = mode === "diff" ? row.diff : row.debit + row.credit;
   const widthPct = Math.min(100, (Math.abs(metric) / maxAbs) * 100);
+  const positive = row.diff >= 0;
   return (
-    <div className="px-4 py-2.5">
+    <div className="group px-4 py-3 transition-colors hover:bg-[var(--surface-2)]/50">
       <div className="flex items-center gap-3">
-        <span className="text-[11px] tnum text-[var(--text-muted)] w-12 shrink-0">
+        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-[7px] bg-[var(--surface-2)] text-[10px] font-bold tnum text-[var(--text-muted)] group-hover:bg-[var(--trust-blue)]/10 group-hover:text-[var(--trust-blue)] transition-colors">
+          {rank}
+        </span>
+        <span className="text-[11px] tnum text-[var(--text-muted)] w-10 shrink-0">
           {row.accountNo}
         </span>
-        <span className="flex-1 min-w-0 text-[12px] text-[var(--text)] truncate" title={row.name}>
+        <span className="flex-1 min-w-0 text-[12.5px] font-medium text-[var(--text)] truncate" title={row.name}>
           {row.name}
         </span>
         <span
           className={cn(
-            "text-[12px] font-semibold tnum whitespace-nowrap",
+            "text-[13px] font-bold tnum whitespace-nowrap",
             mode === "diff"
-              ? row.diff >= 0
+              ? positive
                 ? "text-[var(--profit)]"
                 : "text-[var(--loss)]"
               : "text-[var(--text)]",
@@ -428,23 +458,30 @@ function LedgerRow({
           {mode === "diff" ? fmtSigned(row.diff) : formatCompact(row.debit + row.credit)}
         </span>
       </div>
-      <div className="mt-1.5 flex items-center gap-2">
-        <div className="flex-1 h-1.5 rounded-full bg-[var(--surface-2)] overflow-hidden">
+      <div className="mt-2 flex items-center gap-2.5 pl-9">
+        <div className="flex-1 h-2 rounded-full bg-[var(--surface-2)] overflow-hidden">
           <div
-            className="h-full rounded-full"
+            className="h-full rounded-full transition-all duration-500"
             style={{
               width: `${widthPct}%`,
               background:
                 mode === "diff"
-                  ? row.diff >= 0
-                    ? "var(--profit)"
-                    : "var(--loss)"
-                  : "var(--trust-blue)",
+                  ? positive
+                    ? "linear-gradient(90deg, var(--profit), color-mix(in srgb, var(--profit) 70%, transparent))"
+                    : "linear-gradient(90deg, var(--loss), color-mix(in srgb, var(--loss) 70%, transparent))"
+                  : "linear-gradient(90deg, var(--trust-blue-bright,#2f53c4), var(--trust-blue))",
             }}
           />
         </div>
-        <span className="text-[10px] tnum text-[var(--text-muted)] whitespace-nowrap">
-          D {formatCompact(row.debit)} · K {formatCompact(row.credit)}
+        <span className="flex items-center gap-2 text-[10.5px] tnum text-[var(--text-muted)] whitespace-nowrap">
+          <span className="inline-flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--trust-blue)]" />
+            {formatCompact(row.debit)}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--gold)]" />
+            {formatCompact(row.credit)}
+          </span>
         </span>
       </div>
     </div>
@@ -459,6 +496,10 @@ function BorrowersSection({
 }) {
   const [tab, setTab] = useState<"top" | "overdue">("top");
   const rows = tab === "overdue" ? borrowers.topOverdue : borrowers.top;
+  const maxVal = Math.max(
+    1,
+    ...rows.map((b) => (tab === "overdue" ? b.overdue : b.balance)),
+  );
 
   return (
     <div className="space-y-4">
@@ -467,22 +508,31 @@ function BorrowersSection({
         title="Qarz oluvchilar (ism-familiya)"
         hint={`${borrowers.total.toLocaleString("ru-RU")} ta qarzdor · kredit portfeli (7-ilova)`}
       />
-      <Card>
+      <Card className="shadow-[var(--shadow-sm)]">
         <CardHeader>
           <CardTitle>
             <span className="inline-flex items-center gap-2">
-              <Personalcard size={18} />
+              <span
+                className={cn(
+                  "grid h-7 w-7 place-items-center rounded-[9px]",
+                  tab === "overdue"
+                    ? "bg-[var(--loss)]/12 text-[var(--loss)]"
+                    : "bg-[var(--trust-blue)]/10 text-[var(--trust-blue)]",
+                )}
+              >
+                <Personalcard size={16} variant="Bold" />
+              </span>
               {tab === "overdue" ? "Muddati o'tgan qarzdorlar" : "Eng yirik qarzdorlar"}
             </span>
           </CardTitle>
-          <div className="flex items-center gap-1.5">
+          <div className="inline-flex items-center gap-0.5 rounded-[10px] bg-[var(--surface-2)] p-0.5">
             <button
               onClick={() => setTab("top")}
               className={cn(
-                "h-8 px-3 rounded-[8px] text-[12px] font-medium cursor-pointer transition-colors",
+                "h-7 px-3 rounded-[8px] text-[12px] font-medium cursor-pointer transition-all duration-200",
                 tab === "top"
-                  ? "bg-[var(--trust-blue)] text-white"
-                  : "bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--text)]",
+                  ? "bg-[var(--surface)] text-[var(--trust-blue)] shadow-[var(--shadow-xs)]"
+                  : "text-[var(--text-muted)] hover:text-[var(--text)]",
               )}
             >
               Yiriklari
@@ -490,25 +540,55 @@ function BorrowersSection({
             <button
               onClick={() => setTab("overdue")}
               className={cn(
-                "h-8 px-3 rounded-[8px] text-[12px] font-medium cursor-pointer transition-colors",
+                "inline-flex items-center gap-1.5 h-7 px-3 rounded-[8px] text-[12px] font-medium cursor-pointer transition-all duration-200",
                 tab === "overdue"
-                  ? "bg-[var(--loss)] text-white"
-                  : "bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--text)]",
+                  ? "bg-[var(--surface)] text-[var(--loss)] shadow-[var(--shadow-xs)]"
+                  : "text-[var(--text-muted)] hover:text-[var(--text)]",
               )}
             >
-              Muddati o&apos;tgan ({borrowers.overdueCount})
+              Muddati o&apos;tgan
+              <span
+                className={cn(
+                  "tnum rounded-full px-1.5 text-[10px] font-bold",
+                  tab === "overdue"
+                    ? "bg-[var(--loss)]/15 text-[var(--loss)]"
+                    : "bg-[var(--surface)] text-[var(--text-muted)]",
+                )}
+              >
+                {borrowers.overdueCount}
+              </span>
             </button>
           </div>
         </CardHeader>
         <CardBody className="p-0">
           {rows.length === 0 ? (
-            <p className="text-center text-[13px] text-[var(--text-muted)] py-8">
-              {tab === "overdue" ? "Muddati o'tgan qarzdor yo'q" : "Qarzdor topilmadi"}
-            </p>
+            <div className="flex flex-col items-center gap-2 py-10 text-center">
+              <span
+                className={cn(
+                  "grid h-12 w-12 place-items-center rounded-full",
+                  tab === "overdue"
+                    ? "bg-[var(--profit)]/12 text-[var(--profit)]"
+                    : "bg-[var(--surface-2)] text-[var(--text-soft)]",
+                )}
+              >
+                {tab === "overdue" ? <TickCircle size={26} variant="Bold" /> : <Profile2User size={26} />}
+              </span>
+              <p className="text-[13px] text-[var(--text-muted)]">
+                {tab === "overdue"
+                  ? "Muddati o'tgan qarzdor yo'q — portfel toza ✓"
+                  : "Qarzdor topilmadi"}
+              </p>
+            </div>
           ) : (
             <div className="divide-y divide-[var(--border)]">
               {rows.map((b, idx) => (
-                <BorrowerRow key={b.pinfl ?? idx} b={b} rank={idx + 1} showOverdue={tab === "overdue"} />
+                <BorrowerRow
+                  key={b.pinfl ?? idx}
+                  b={b}
+                  rank={idx + 1}
+                  showOverdue={tab === "overdue"}
+                  maxVal={maxVal}
+                />
               ))}
             </div>
           )}
@@ -518,14 +598,22 @@ function BorrowersSection({
   );
 }
 
+const RANK_STYLE = [
+  "bg-gradient-to-br from-[var(--gold-soft)] to-[var(--gold)] text-white ring-1 ring-white/20",
+  "bg-gradient-to-br from-slate-300 to-slate-400 text-white ring-1 ring-white/20",
+  "bg-gradient-to-br from-amber-600 to-amber-700 text-white ring-1 ring-white/20",
+];
+
 function BorrowerRow({
   b,
   rank,
   showOverdue,
+  maxVal,
 }: {
   b: TopBorrower;
   rank: number;
   showOverdue: boolean;
+  maxVal: number;
 }) {
   const initials = b.name
     .split(/\s+/)
@@ -533,24 +621,62 @@ function BorrowerRow({
     .map((w) => w[0])
     .join("")
     .toUpperCase();
+  const val = showOverdue ? b.overdue : b.balance;
+  const widthPct = Math.min(100, (Math.abs(val) / maxVal) * 100);
+  const topRank = rank <= 3;
+
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5">
-      <span className="grid place-items-center h-8 w-8 rounded-full bg-[var(--trust-blue)]/10 text-[var(--trust-blue)] text-[11px] font-bold shrink-0">
+    <div className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--surface-2)]/50">
+      {/* rank */}
+      <span
+        className={cn(
+          "grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold tnum",
+          topRank
+            ? RANK_STYLE[rank - 1]
+            : "bg-[var(--surface-2)] text-[var(--text-muted)]",
+        )}
+      >
+        {rank}
+      </span>
+      {/* avatar */}
+      <span
+        className={cn(
+          "grid place-items-center h-9 w-9 shrink-0 rounded-full text-[11px] font-bold text-white ring-1 ring-white/15",
+          showOverdue
+            ? "bg-gradient-to-br from-[var(--loss-bright,#ef4444)] to-[var(--loss)]"
+            : "bg-gradient-to-br from-[var(--trust-blue-bright,#2f53c4)] to-[var(--trust-blue)]",
+        )}
+      >
         {initials || rank}
       </span>
+      {/* ism + progress */}
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium text-[var(--text)] truncate" title={b.name}>
+        <p className="text-[13px] font-semibold text-[var(--text)] truncate" title={b.name}>
           {b.name}
         </p>
-        <p className="text-[11px] text-[var(--text-muted)] tnum">
-          {b.pinfl ?? "—"}
-          {b.rate != null ? ` · ${b.rate}%` : ""}
-        </p>
+        <div className="mt-1 flex items-center gap-2">
+          <div className="flex-1 h-1.5 rounded-full bg-[var(--surface-2)] overflow-hidden max-w-[160px]">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${widthPct}%`,
+                background: showOverdue
+                  ? "linear-gradient(90deg, var(--loss), color-mix(in srgb, var(--loss) 65%, transparent))"
+                  : "linear-gradient(90deg, var(--trust-blue-bright,#2f53c4), var(--trust-blue))",
+              }}
+            />
+          </div>
+          <span className="text-[11px] text-[var(--text-muted)] tnum">
+            {b.pinfl ?? "—"}
+            {b.rate != null ? ` · ${b.rate}%` : ""}
+          </span>
+        </div>
       </div>
+      {/* qiymat */}
       <div className="text-right shrink-0">
         {showOverdue ? (
           <>
-            <p className="text-[13px] font-semibold tnum text-[var(--loss)]">
+            <p className="text-[14px] font-bold tnum text-[var(--loss)]">
               {formatCompact(b.overdue)}
             </p>
             <p className="text-[11px] text-[var(--text-muted)] tnum">
@@ -559,7 +685,7 @@ function BorrowerRow({
           </>
         ) : (
           <>
-            <p className="text-[13px] font-semibold tnum text-[var(--text)]">
+            <p className="text-[14px] font-bold tnum text-[var(--text)]">
               {formatCompact(b.balance)}
             </p>
             <p className="text-[11px] text-[var(--text-muted)] tnum">

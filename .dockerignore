@@ -35,6 +35,8 @@ docker-compose.yml
 
 # --- loyihaga oid ---
 info/_analysis
+info/test-reports
+scripts
 *.md
 README*.md
 
