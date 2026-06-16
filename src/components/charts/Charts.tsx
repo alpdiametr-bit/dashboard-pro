@@ -612,3 +612,170 @@ export function Sparkline({
   );
 }
 
+/**
+ * Universal diagramma — AI yordamchi natijalari uchun.
+ * Generik qatorlardan (Record[]) bar/line/area/pie chizadi.
+ */
+export function GenericChart({
+  type,
+  data,
+  xField,
+  yField,
+  height = 320,
+}: {
+  type: "bar" | "line" | "area" | "pie";
+  data: Record<string, unknown>[];
+  xField: string;
+  yField: string;
+  height?: number;
+}) {
+  // Qatorlarni grafik uchun tayyorlash (x label + raqamli y)
+  const rows = data
+    .map((r) => {
+      const xRaw = r[xField];
+      let x: string;
+      const iso =
+        typeof xRaw === "string" && xRaw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (iso) x = `${iso[3]}.${iso[2]}`; // dd.mm
+      else x = xRaw === null || xRaw === undefined ? "—" : String(xRaw);
+      const y = Number(r[yField] ?? 0);
+      return { x, y: isNaN(y) ? 0 : y };
+    })
+    .filter((d) => d.x !== "—" || d.y !== 0);
+
+  if (!rows.length) return <Empty text="Diagramma uchun ma'lumot yo'q" />;
+
+  const axisX = (
+    <XAxis
+      dataKey="x"
+      tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+      tickLine={false}
+      axisLine={{ stroke: "var(--border)" }}
+      interval="preserveStartEnd"
+      angle={rows.length > 6 ? -16 : 0}
+      textAnchor={rows.length > 6 ? "end" : "middle"}
+      height={rows.length > 6 ? 52 : 28}
+    />
+  );
+  const axisY = (
+    <YAxis
+      tickFormatter={(v) => formatCompact(v as number)}
+      tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+      tickLine={false}
+      axisLine={false}
+      width={58}
+    />
+  );
+  const tip = (
+    <Tooltip
+      cursor={{ fill: "var(--surface-2)", opacity: 0.5 }}
+      formatter={(v: number) => [formatMoney(v), ""]}
+      contentStyle={tooltipStyle}
+    />
+  );
+  const grid = (
+    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+  );
+
+  if (type === "pie") {
+    return (
+      <ResponsiveContainer width="100%" height={height}>
+        <PieChart>
+          <Pie
+            data={rows}
+            dataKey="y"
+            nameKey="x"
+            cx="50%"
+            cy="50%"
+            innerRadius={60}
+            outerRadius={110}
+            paddingAngle={2}
+          >
+            {rows.map((_, i) => (
+              <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip
+            formatter={(v: number, n) => [formatMoney(v), String(n)]}
+            contentStyle={tooltipStyle}
+          />
+          <Legend
+            wrapperStyle={{ fontSize: 12 }}
+            iconType="circle"
+            formatter={(val) => (
+              <span style={{ color: "var(--text-muted)" }}>{val}</span>
+            )}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  if (type === "line") {
+    return (
+      <ResponsiveContainer width="100%" height={height}>
+        <LineChart data={rows} margin={{ top: 12, right: 16, bottom: 8, left: 6 }}>
+          {grid}
+          {axisX}
+          {axisY}
+          {tip}
+          <Line
+            type="monotone"
+            dataKey="y"
+            stroke={COLORS[0]}
+            strokeWidth={2.4}
+            dot={{ r: 3, fill: COLORS[0] }}
+            activeDot={{ r: 5 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  if (type === "area") {
+    return (
+      <ResponsiveContainer width="100%" height={height}>
+        <AreaChart data={rows} margin={{ top: 12, right: 16, bottom: 8, left: 6 }}>
+          <defs>
+            <linearGradient id="gen-area" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={COLORS[0]} stopOpacity={0.35} />
+              <stop offset="100%" stopColor={COLORS[0]} stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          {grid}
+          {axisX}
+          {axisY}
+          {tip}
+          <Area
+            type="monotone"
+            dataKey="y"
+            stroke={COLORS[0]}
+            strokeWidth={2.4}
+            fill="url(#gen-area)"
+            dot={{ r: 2.5, fill: COLORS[0] }}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  // bar (default)
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart data={rows} margin={{ top: 12, right: 12, bottom: 8, left: 6 }}>
+        <defs>
+          <linearGradient id="gen-bar" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={COLORS[0]} stopOpacity={0.95} />
+            <stop offset="100%" stopColor={COLORS[0]} stopOpacity={0.55} />
+          </linearGradient>
+        </defs>
+        {grid}
+        {axisX}
+        {axisY}
+        {tip}
+        <Bar dataKey="y" radius={[8, 8, 0, 0]} maxBarSize={48} fill="url(#gen-bar)" />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+

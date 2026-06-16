@@ -251,6 +251,72 @@ body {
   }
 }
 
+/* ───────── Range slider (signallar ostonasi) ───────── */
+.dp-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-3, #e2e8f0);
+  outline: none;
+  cursor: pointer;
+}
+.dp-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--trust-blue-bright, #2f53c4), var(--trust-blue));
+  border: 2px solid #fff;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.15s ease;
+}
+.dp-range::-webkit-slider-thumb:hover {
+  transform: scale(1.12);
+}
+.dp-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--trust-blue);
+  border: 2px solid #fff;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+}
+.dp-range::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-3, #e2e8f0);
+}
+
+/* ───────── Checkbox (signal filtri) ───────── */
+.dp-check {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border-strong, #cbd5e1);
+  background: var(--surface);
+  cursor: pointer;
+  display: grid;
+  place-content: center;
+  transition: all 0.15s ease;
+}
+.dp-check:checked {
+  background: var(--trust-blue);
+  border-color: var(--trust-blue);
+}
+.dp-check:checked::after {
+  content: "";
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translateY(-1px);
+}
+
 /* ───────── Keyframes ───────── */
 @keyframes dp-rise {
   from {

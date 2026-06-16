@@ -310,3 +310,37 @@ model Note {
   @@index([reportId])
   @@index([entityType, entityId])
 }
+
+// ─────────── AI yordamchi — chat yozishmalari (har ehtimolga DB ga saqlanadi) ───────────
+// MUHIM: AI ga DATA berilmaydi (faqat sxema+katalog). Lekin foydalanuvchi
+// savollari, AI rejasi (querySpec), olib kelingan natija va diagramma —
+// audit/tahlil uchun shu yerda saqlanadi.
+
+model AiConversation {
+  id        Int         @id @default(autoincrement())
+  uid       String      @unique // klient yaratadigan barqaror id (uuid)
+  title     String?     @db.Text // birinchi savoldan
+  adminId   Int?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  messages  AiMessage[]
+
+  @@index([adminId])
+}
+
+model AiMessage {
+  id             Int            @id @default(autoincrement())
+  conversationId Int
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String // user | assistant
+  content        String         @db.Text // matn (savol yoki javob/xulosa)
+  querySpec      Json? // AI yuborgan so'rov rejasi (assistant)
+  result         Json? // olib kelingan natija (columns/rows/total) — har ehtimolga
+  chart          Json? // diagramma spetsifikatsiyasi
+  model          String? // qaysi AI model ishlatildi
+  createdAt      DateTime       @default(now())
+
+  @@index([conversationId])
+}
+

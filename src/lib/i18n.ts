@@ -21,6 +21,8 @@ const uz: Dict = {
   // Navigatsiya
   "nav.dashboard": "Dashboard",
   "nav.firms": "Firmalar",
+  "nav.alerts": "Ogohlantirishlar",
+  "nav.ai": "AI yordamchi",
   "nav.upload": "Hisobot yuklash",
   "nav.audit": "Audit jurnali",
   // Yon panel / mobil menyu
@@ -50,6 +52,8 @@ const uz: Dict = {
 const ru: Dict = {
   "nav.dashboard": "Дашборд",
   "nav.firms": "Компании",
+  "nav.alerts": "Оповещения",
+  "nav.ai": "AI помощник",
   "nav.upload": "Загрузка отчёта",
   "nav.audit": "Журнал аудита",
   "chrome.menu": "Меню",
@@ -76,6 +80,8 @@ const ru: Dict = {
 const en: Dict = {
   "nav.dashboard": "Dashboard",
   "nav.firms": "Companies",
+  "nav.alerts": "Alerts",
+  "nav.ai": "AI assistant",
   "nav.upload": "Upload report",
   "nav.audit": "Audit log",
   "chrome.menu": "Menu",

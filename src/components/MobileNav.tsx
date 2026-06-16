@@ -14,11 +14,15 @@ import {
   ShieldTick,
   HamburgerMenu,
   CloseCircle,
+  NotificationBing,
+  Magicpen,
 } from "iconsax-reactjs";
 
 const nav = [
   { href: "/dashboard", key: "nav.dashboard", icon: Element3 },
   { href: "/firmalar", key: "nav.firms", icon: Building },
+  { href: "/signallar", key: "nav.alerts", icon: NotificationBing },
+  { href: "/ai", key: "nav.ai", icon: Magicpen },
   { href: "/yuklash", key: "nav.upload", icon: DocumentUpload },
   { href: "/loglar", key: "nav.audit", icon: Clipboard },
 ];
